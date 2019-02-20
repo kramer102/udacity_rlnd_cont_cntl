@@ -50,7 +50,7 @@ I added batch normalization, gradient clipping, annealed the noise with an epsil
 
 ### Hyper-parameters
 | Hyper-parameter | Value | Comment
-| :------------- | :------------- | |
+| :------------- | :------------- | :-------------- |
 | BUFFER_SIZE | int(1e6)  | replay buffer size|
 | BATCH_SIZE    | 128   | minibatch size    |
 |GAMMA | 0.98  | discount factor|        
