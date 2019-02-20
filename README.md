@@ -85,6 +85,7 @@ This yields an average score for each episode (where the average is over all 20 
 The environment is considered solved, when the average (over 100 episodes) of those average scores is at least +30. In the case of the plot above, the environment was solved at episode 63, since the average of the average scores from episodes 64 to 163 (inclusive) was greater than +30.
 
 ## Instructions:
+1. Setup Environment and clone repository
 1. Explore the environment using Continuous_Control_Env_Explore.ipynb
 2. Train the agent using DDGP_train_con_many_arm.ipynb
 3. Compare your results to Report.md

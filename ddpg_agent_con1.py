@@ -10,14 +10,16 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 BUFFER_SIZE = int(1e6)  # replay buffer size
-BATCH_SIZE = 256        # minibatch size
-GAMMA = 0.99            # discount factor
+BATCH_SIZE = 128        # minibatch size
+GAMMA = 0.98            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 1e-4         # learning rate of the actor 
 LR_CRITIC = 1e-3        # learning rate of the critic
-WEIGHT_DECAY = 1e-6     # L2 weight decay
+WEIGHT_DECAY = 0        # L2 weight decay
 
-replay_batch = 10       # number of replays to update with
+replay_batch = 1       # number of times per step to update (20 agents)
+
+Epsilon = np.linspace(1,0.01,60000) # 60 episodes*1000steps
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -37,6 +39,7 @@ class Agent():
         self.state_size = state_size
         self.action_size = action_size
         self.seed = random.seed(random_seed)
+        self.t_step = 0
 
         # Actor Network (w/ Target Network)
         self.actor_local = Actor(state_size, action_size, random_seed).to(device)
@@ -56,6 +59,7 @@ class Agent():
     
     def step(self, states, actions, rewards, next_states, dones):
         """Save experience in replay memory, and use random sample from buffer to learn."""
+        self.t_step = self.t_step + 1
         # Save experience / reward
         for state, action, reward, next_state, done in zip(states, actions, rewards, next_states, dones):
             self.memory.add(state, action, reward, next_state, done)
@@ -68,7 +72,11 @@ class Agent():
             for a in range(replay_batch):
                 experiences = self.memory.sample()
                 self.learn(experiences, GAMMA)
-
+    
+    def anneal_epsilon(self):
+        step = int(self.t_step)
+        return(Epsilon[step] if step <= len(Epsilon)-1 else .01)
+    
     def act(self, state, add_noise=True):
         """Returns actions for given state as per current policy."""
         state = torch.from_numpy(state).float().to(device)
@@ -77,7 +85,8 @@ class Agent():
             action = self.actor_local(state).cpu().data.numpy()
         self.actor_local.train()
         if add_noise:
-            action += self.noise.sample()
+            # added an annealing epsilon
+            action += self.noise.sample()*self.anneal_epsilon()
         return np.clip(action, -1, 1)
 
     def reset(self):
@@ -118,6 +127,7 @@ class Agent():
         # Minimize the loss
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.critic_local.parameters(), 1)
         self.actor_optimizer.step()
 
         # ----------------------- update target networks ----------------------- #
@@ -140,7 +150,7 @@ class Agent():
 class OUNoise:
     """Ornstein-Uhlenbeck process."""
 
-    def __init__(self, size, seed, mu=0., theta=0.15, sigma=0.05):
+    def __init__(self, size, seed, mu=0., theta=0.15, sigma=0.2):
         """Initialize parameters and noise process."""
         self.mu = mu * np.ones(size)
         self.theta = theta
